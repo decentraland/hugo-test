@@ -9,6 +9,6 @@ jobs:
   cd:
     uses: decentraland/platform-actions/.github/workflows/apps-docker-next.yml@main
     with:
-      service-name: ws-room-service
+      service-name: uws-test
       dockerfile-url: https://raw.githubusercontent.com/decentraland/platform-actions/main/Dockerfile.ubuntu
     secrets: inherit

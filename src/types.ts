@@ -1,15 +1,14 @@
 import { HTTPProvider } from 'eth-connect'
-import type { IFetchComponent } from '@well-known-components/http-server'
 import type {
   IConfigComponent,
   ILoggerComponent,
   IHttpServerComponent,
+  IFetchComponent,
   IMetricsComponent
 } from '@well-known-components/interfaces'
 import { metricDeclarations } from './metrics'
-import { IWebSocketConnectorComponent } from './adapters/ws-connector'
-import { RoomComponent } from './adapters/rooms'
-import { WsUserData } from '@well-known-components/http-server/dist/uws'
+import * as uws from 'uWebSockets.js'
+import { IUWsComponent } from './adapters/uws'
 
 export type GlobalContext = {
   components: BaseComponents
@@ -21,10 +20,8 @@ export type BaseComponents = {
   logs: ILoggerComponent
   fetch: IFetchComponent
   metrics: IMetricsComponent<keyof typeof metricDeclarations>
-  wsConnector: IWebSocketConnectorComponent
-  rooms: RoomComponent
   ethereumProvider: HTTPProvider
-  server: IHttpServerComponent<GlobalContext>
+  server: IUWsComponent
 }
 
 // components used in runtime
@@ -53,8 +50,10 @@ export type HandlerContextWithPath<
 
 export type Context<Path extends string = any> = IHttpServerComponent.PathAwareContext<GlobalContext, Path>
 
-export type InternalWebSocket = WsUserData & {
+export type WsData = {
   address: string
   alias: number
   roomId: string
 }
+
+export type WebSocket = uws.WebSocket<WsData>
