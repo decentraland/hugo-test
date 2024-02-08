@@ -1,7 +1,7 @@
 import { getDefaultHttpMetrics, validateMetricsDeclaration } from './adapters/metrics'
 
 export const metricDeclarations = {
-  ...getDefaultHttpMetrics(),
+  ...getDefaultHttpMetrics()
 }
 
 // type assertions

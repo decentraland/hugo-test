@@ -12,7 +12,7 @@ export async function main(program: Lifecycle.EntryPointParameters<AppComponents
 
   server.app.get('/health/live', (res) => {
     res.writeStatus('200 OK')
-    res.end("alive")
+    res.end('alive')
   })
 
   server.app.get('/status', (res) => {
@@ -50,8 +50,7 @@ export async function main(program: Lifecycle.EntryPointParameters<AppComponents
     }
   })
 
-
-  server.app.filter(async (res, count )=> {
+  server.app.filter(async (res, count) => {
     console.log(res, count)
   })
 

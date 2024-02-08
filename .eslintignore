@@ -3,5 +3,6 @@ dist/
 *.d.ts
 *.json
 src/index.ts
+src/adapters/metrics
 
 src/proto
