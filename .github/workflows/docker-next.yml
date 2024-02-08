@@ -5,6 +5,7 @@ on:
     branches:
       - "main"
 
+
 jobs:
   cd:
     uses: decentraland/platform-actions/.github/workflows/apps-docker-next.yml@main
