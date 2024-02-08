@@ -35,7 +35,6 @@ export async function createUWsComponent(
     app.close()
   }
 
-  console.log(app.get)
   return {
     app,
     start,
