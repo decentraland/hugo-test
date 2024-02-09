@@ -4,10 +4,13 @@ export async function createStatusHandler(components: Pick<AppComponents, 'confi
   const { config } = components
   const commitHash = (await config.getString('COMMIT_HASH')) || 'unknown'
 
-  return async () => {
-    return {
-      body: {
-        commitHash
+  return {
+    path: '/status',
+    f: async () => {
+      return {
+        body: {
+          commitHash
+        }
       }
     }
   }

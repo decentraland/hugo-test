@@ -1,11 +1,10 @@
 import { Lifecycle } from '@well-known-components/interfaces'
 import { HttpRequest, HttpResponse } from 'uWebSockets.js'
+import { onRequestEnd, onRequestStart } from './adapters/metrics'
 import { createMetricsHandler } from './controllers/handlers/metricsHandler'
 import { registerRoomHandler } from './controllers/handlers/roomHandler'
 import { createStatusHandler } from './controllers/handlers/statusHandler'
 import { AppComponents, IHandler, TestComponents } from './types'
-
-const noopStartTimer = { end() {} }
 
 export async function main(program: Lifecycle.EntryPointParameters<AppComponents | TestComponents>) {
   const { components, startComponents } = program
@@ -14,23 +13,15 @@ export async function main(program: Lifecycle.EntryPointParameters<AppComponents
 
   function wrap(h: IHandler) {
     return async (res: HttpResponse, req: HttpRequest) => {
-      const labels = {
-        method: req.getMethod(),
-        handler: req.getUrl(),
-        code: 500
-      }
-      const startTimerResult = metrics.startTimer('http_request_duration_seconds', labels)
-      const end = startTimerResult?.end || noopStartTimer.end
-
+      const { labels, end } = onRequestStart(metrics, req.getMethod(), h.path)
       let status = 500
       try {
-        const result = await h(res, req)
+        const result = await h.f(res, req)
         status = result.status ?? 200
         res.writeStatus(`${status}`)
 
         const headers = new Headers(result.headers ?? {})
 
-        // TODO:
         if (!headers.has('Access-Control-Allow-Origin')) {
           headers.set('Access-Control-Allow-Origin', '*')
         }
@@ -49,40 +40,39 @@ export async function main(program: Lifecycle.EntryPointParameters<AppComponents
         res.writeStatus(`${status}`)
         res.end()
       } finally {
-        labels.code = status
-        metrics.increment('http_requests_total', labels)
-        end(labels)
+        onRequestEnd(metrics, labels, status, end)
       }
     }
   }
 
   await registerRoomHandler(components)
 
-  server.app.get('/status', wrap(await createStatusHandler(components)))
-
   {
-    const { path, handler } = await createMetricsHandler(components)
-    server.app.get(path, wrap(handler))
+    const handler = await createStatusHandler(components)
+    server.app.get(handler.path, wrap(handler))
   }
 
-  server.app.get(
-    '/health/live',
-    wrap(async () => {
-      return {
-        body: 'alive'
-      }
-    })
-  )
+  {
+    const handler = await createMetricsHandler(components)
+    server.app.get(handler.path, wrap(handler))
+  }
 
-  server.app.any(
-    '/*',
-    wrap(async () => {
-      return {
-        status: 404,
-        body: { error: 'Not Found' }
-      }
-    })
-  )
+  server.app.any('/health/live', (res, req) => {
+    const { end, labels } = onRequestStart(metrics, req.getMethod(), '/health/live')
+    res.writeStatus('200 OK')
+    res.writeHeader('Access-Control-Allow-Origin', '*')
+    res.end('alive')
+    onRequestEnd(metrics, labels, 404, end)
+  })
+
+  server.app.any('/*', (res, req) => {
+    const { end, labels } = onRequestStart(metrics, req.getMethod(), '')
+    res.writeStatus('404 Not Found')
+    res.writeHeader('Access-Control-Allow-Origin', '*')
+    res.writeHeader('content-type', 'application/json')
+    res.end(JSON.stringify({ error: 'Not Found' }))
+    onRequestEnd(metrics, labels, 404, end)
+  })
 
   // start ports: db, listeners, synchronizations, etc
   await startComponents()

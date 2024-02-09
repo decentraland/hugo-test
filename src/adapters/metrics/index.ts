@@ -1,7 +1,7 @@
 import { IBaseComponent, IConfigComponent, IMetricsComponent } from '@well-known-components/interfaces'
 
 import { collectDefaultMetrics } from 'prom-client'
-import { getDefaultHttpMetrics } from './http'
+import { getDefaultHttpMetrics, HttpMetrics } from './http'
 import { createTestMetricsComponent } from './base'
 
 export { createTestMetricsComponent, getDefaultHttpMetrics }
@@ -52,4 +52,31 @@ export function validateMetricsDeclaration<T extends string>(
   metricsDefinition: IMetricsComponent.MetricsRecordDefinition<T>
 ): IMetricsComponent.MetricsRecordDefinition<T> {
   return metricsDefinition
+}
+
+const noopStartTimer = { end() {} }
+
+export function onRequestStart(metrics: IMetricsComponent<HttpMetrics>, method: string, handler: string) {
+  const labels = {
+    method,
+    handler
+  }
+  const startTimerResult = metrics.startTimer('http_request_duration_seconds', labels)
+  const end = startTimerResult?.end || noopStartTimer.end
+  return { end, labels }
+}
+
+export function onRequestEnd(
+  metrics: IMetricsComponent<HttpMetrics>,
+  startLabels: Record<string, any>,
+  code: number,
+  end: (labels: Record<string, any>) => void
+) {
+  const labels = {
+    ...startLabels,
+    code
+  }
+
+  metrics.increment('http_requests_total', labels)
+  end(labels)
 }

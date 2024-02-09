@@ -67,4 +67,7 @@ export type IHandlerResult = {
   body?: ResponseBody
 }
 
-export type IHandler = (res: uws.HttpResponse, req: uws.HttpRequest) => Promise<IHandlerResult>
+export type IHandler = {
+  path: string
+  f: (res: uws.HttpResponse, req: uws.HttpRequest) => Promise<IHandlerResult>
+}
