@@ -57,3 +57,14 @@ export type WsData = {
 }
 
 export type WebSocket = uws.WebSocket<WsData>
+
+export type JsonBody = Record<string, any>
+export type ResponseBody = JsonBody | string
+
+export type IHandlerResult = {
+  status?: number
+  headers?: Record<string, string>
+  body?: ResponseBody
+}
+
+export type IHandler = (res: uws.HttpResponse, req: uws.HttpRequest) => Promise<IHandlerResult>

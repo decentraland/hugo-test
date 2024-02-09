@@ -1,4 +1,4 @@
-import { AppComponents } from '../../types'
+import { AppComponents, IHandler } from '../../types'
 import { Registry } from 'prom-client'
 
 export const CONFIG_PREFIX = 'WKC_METRICS' as const
@@ -7,8 +7,10 @@ export function _configKey(key: Uppercase<string>): string {
   return `${CONFIG_PREFIX}_${key.toUpperCase().replace(/^(_*)/, '')}`
 }
 
-export async function registerMetricsHandler(components: Pick<AppComponents, 'config' | 'server' | 'metrics'>) {
-  const { metrics, config, server } = components
+export async function createMetricsHandler(
+  components: Pick<AppComponents, 'config' | 'metrics'>
+): Promise<{ path: string; handler: IHandler }> {
+  const { metrics, config } = components
 
   const metricsPath = (await config.getString(_configKey('PUBLIC_PATH'))) || '/metrics'
   const bearerToken = await config.getString(_configKey('BEARER_TOKEN'))
@@ -20,21 +22,17 @@ export async function registerMetricsHandler(components: Pick<AppComponents, 'co
 
   let nextReset: number = calculateNextReset()
 
-  server.app.get(metricsPath, async (res, req): Promise<void> => {
+  const handler: IHandler = async (_res, req) => {
     const body = await (metrics as any as { registry: Registry }).registry.metrics()
 
     if (bearerToken) {
       const header = req.getHeader('authorization')
       if (!header) {
-        res.writeStatus('401 Forbidden')
-        res.end()
-        return
+        return { status: 401 }
       }
       const [_, value] = header.split(' ')
       if (value !== bearerToken) {
-        res.writeStatus('401 Forbidden')
-        res.end()
-        return
+        return { status: 401 }
       }
     }
 
@@ -46,8 +44,11 @@ export async function registerMetricsHandler(components: Pick<AppComponents, 'co
       metrics.resetAll()
     }
 
-    res.writeStatus('200 OK')
-    res.writeHeader('content-type', 'application/json')
-    res.end(body)
-  })
+    return {
+      headers: { 'content-type': 'application/json' },
+      body
+    }
+  }
+
+  return { path: metricsPath, handler }
 }
